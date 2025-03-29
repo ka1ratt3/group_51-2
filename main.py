@@ -9,6 +9,7 @@ def main(page: ft.Page):
 
     task_list = ft.Column(spacing=10)
     filter_type = "all"
+    warning_text = ft.Text("", color=ft.colors.RED)
 
     def load_tasks():
         task_list.controls.clear()
@@ -40,12 +41,20 @@ def main(page: ft.Page):
             ft.IconButton(ft.icons.DELETE, icon_color=ft.colors.RED_400, on_click=lambda e: delete_task(task_id))
         ], alignment=ft.MainAxisAlignment.SPACE_BETWEEN)
     
+    def on_text_change(e):
+        if len(task_input.value) > 100:
+            warning_text.value = "Максимальная длина задачи — 100 символов!"
+        else:
+            warning_text.value = ""
+        page.update()
+
     def add_task(e):
         if task_input.value.strip():
             task_id = main_db.add_task_db(task_input.value)
             task_list.controls.append(create_task_row(task_id, task_input.value))
             task_input.value = ""
-            page.update()
+            warning_text.value = ""
+        page.update()
 
     def toggle_task(task_id, is_completed):
         main_db.update_task_db(task_id, completed=int(is_completed))
@@ -53,6 +62,10 @@ def main(page: ft.Page):
 
     def delete_task(task_id):
         main_db.delete_task_db(task_id)
+        load_tasks()
+
+    def clear_completed_tasks(e):
+        main_db.clear_completed_tasks_db()  # Метод для очистки выполненных задач в базе
         load_tasks()
     
     def set_filter(filter_value):
@@ -64,10 +77,18 @@ def main(page: ft.Page):
         colors = [ft.colors.BLUE, ft.colors.RED, ft.colors.GREEN, ft.colors.YELLOW, ft.colors.PURPLE]
         page.bgcolor = random.choice(colors)
         page.update()
-
-    task_input = ft.TextField(hint_text='Добавьте задачу', expand=True, dense=True, on_submit=add_task)
+    
+    task_input = ft.TextField(
+        hint_text='Добавьте задачу', 
+        expand=True, 
+        dense=True, 
+        max_length=100,  # Ограничение на 100 символов
+        on_change=on_text_change,  # обработчик изменения текста
+        on_submit=add_task
+    )
     add_button = ft.ElevatedButton("Добавить", on_click=add_task, icon=ft.icons.ADD)
     color_button = ft.ElevatedButton("Сменить фон", on_click=change_background_color)
+    clear_button = ft.ElevatedButton("Очистить выполненные", on_click=clear_completed_tasks)  # Кнопка для очистки выполненных
 
     filter_button = ft.Row([
         ft.ElevatedButton("Все", on_click=lambda e: set_filter("all")),
@@ -77,7 +98,8 @@ def main(page: ft.Page):
 
     content = ft.Container(
         content=ft.Column([
-            ft.Row([task_input, add_button, color_button], alignment=ft.MainAxisAlignment.SPACE_BETWEEN),
+            ft.Row([task_input, add_button, color_button, clear_button], alignment=ft.MainAxisAlignment.SPACE_BETWEEN),
+            warning_text,
             filter_button,
             task_list
         ], alignment=ft.MainAxisAlignment.CENTER), 
